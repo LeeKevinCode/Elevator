@@ -36,3 +36,22 @@ def callback1(timer):
 tim1 = Timer(4, freq = 1)
 tim1.callback(callback1)
 
+
+ctest2[0] = ctest1[0]
+ctest2[1] = ctest1[1]
+ctest2[2] = ctest1[2]
+while not (ctest2[0] == 82 and ctest2[1] == 69 and ctest2[2] == 81):
+	u2.readinto(ctest1)
+	count2 +=1
+	if ctest2[1] == 82 and ctest2[2] == 69 and ctest1[0] == 81:
+		break
+	if ctest2[2] == 82 and ctest1[0] == 69 and ctest1[1] == 81:
+		break
+	if count2 > 5000:
+		count2 = 0
+		break
+	ctest2[0] = ctest1[0]
+	ctest2[1] = ctest1[1]
+	ctest2[2] = ctest1[2]
+	print(count2)
+
