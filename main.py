@@ -3,10 +3,10 @@ micropython.alloc_emergency_exception_buf(100)
 import pyb
 from pyb import UART
 from pyb import Timer
-rr = 15
-countFinal = 30
-cshort = bytearray(rr)
-clong = bytearray(rr * countFinal)
+cshort = bytearray(40)
+clong = bytearray(400)
+bs = 0
+bf = 0
 count = 0
 u1 = UART(1, 9600)
 u1.writechar(250)
@@ -20,15 +20,19 @@ u1.writechar(6)
 u1.writechar(3)
 u1.writechar(119)
 def callback1(timer):
-	global count, rr
-	u1.readinto(cshort)
-	for i in range(rr):
-		clong[count * rr + i] = cshort[i]
-		cshort[i] = 0
-	count += 1
-	if count >= countFinal:
+	global bs, bf, count
+	bs = u1.any()
+	if bs > 0:
+		u1.readinto(cshort)
+		print(cshort)
+	for i in range(bs):
+		clong[bf + i] = cshort[i]
+	bf += bs
+	count ++
+	if count >= 10:
 		print(clong)
 		count = 0
-tim1 = Timer(4, freq = 1)
+		bf = 0
+tim1 = Timer(4, freq = 1/3)
 tim1.callback(callback1)
 
