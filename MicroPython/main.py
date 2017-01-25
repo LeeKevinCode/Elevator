@@ -57,8 +57,10 @@ u1.writechar(119)
 
 def mobileSig():
     laserSig = str(clong)
-    length = len(laserSig)
-    totalLength = length + 53
+    rtcSig = str(rtc.datetime())
+    laserLength = len(laserSig)
+    rtcLength = len(rtcSig)
+    totalLength = laserLength + 50 + rtcLength
     u2.writechar(26)
     u2.write('AT+CHTTPACT="dataflow-1293.appspot.com",80\r')
     pyb.delay(8000)
@@ -71,11 +73,13 @@ def mobileSig():
     u2.writechar(10)
     u2.write('laserData=')
     u2.write(laserSig)
-    u2.write('&rms=rms&rtc=rtc&temp=temp&cur=cur&hum=hum&')
+    u2.write('&rms=rms&rtc=')
+    u2.write(rtcSig)
+    u2.write('&temp=temp&cur=cur&hum=hum&')
     u2.writechar(26)
     pyb.delay(2000)
     print(u2.readall())
-    print(rtc.datetime())
+    print(rtcSig)
 
 def laserDetecter(timer):
     global count, inputlength
@@ -100,4 +104,5 @@ while True:
         print(count)
         count = 0
         lbel1 = 0
-        print(clong)
+        mobileSig()
+
