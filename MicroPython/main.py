@@ -8,6 +8,24 @@ clong = bytearray(1024)
 lbel1 = 0
 count = 0                          #For count every 30 sec
 
+def getTime(u2):
+    u2.writechar(26)
+    u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
+    pyb.delay(1000)
+    u2.write('AT+CHTTPACT="dataflow-1293.appspot.com",80\r')
+    pyb.delay(8000)
+    u2.write('GET /showTime HTTP/1.1\r\n')
+    u2.write('Host:dataflow-1293.appspot.com\r\n')
+    u2.write('Content-Length: 0\r\n')
+    u2.writechar(10)
+    u2.writechar(26)
+    result = u2.readall()
+    return str(result)
+
+def initRTC(rtc, time):
+    dt = eval(time)
+    rtc.datetime(dt)
+
 u1 = UART(1, baudrate=9600, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
@@ -22,6 +40,16 @@ u1.writechar(5)
 u1.writechar(1)
 u1.writechar(252)
 pyb.delay(1000)
+
+result = getTime(u2)
+index = result.find("##")
+while index == -1 or (index + 26) > len(result):
+    result = getTime(u2)
+    index = result.find("##")
+
+rtc = pyb.RTC()
+initRTC(rtc, result[index+2:index+26])
+
 u1.writechar(128)
 u1.writechar(6)
 u1.writechar(3)
@@ -47,6 +75,7 @@ def mobileSig():
     u2.writechar(26)
     pyb.delay(2000)
     print(u2.readall())
+    print(rtc.datetime())
 
 def laserDetecter(timer):
     global count, inputlength
