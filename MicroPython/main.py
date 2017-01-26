@@ -55,8 +55,8 @@ u1.writechar(6)
 u1.writechar(3)
 u1.writechar(119)
 
-def mobileSig():
-    laserSig = str(clong)
+def mobileSig(count1):
+    laserSig = str(clong[0:count1])
     rtcSig = str(rtc.datetime())
     laserLength = len(laserSig)
     rtcLength = len(rtcSig)
@@ -82,13 +82,26 @@ def mobileSig():
     print(rtcSig)
 
 def laserDetecter(timer):
-    global count, inputlength
+    global count
     inputlength = u1.any()
+    spacLabel = 0
+    spacState = 1
     if 1024 < (inputlength + count):
         inputlength = 1024 - count
     for i in range(inputlength):
-        clong[count + i] = u1.readchar()
-    count = count + inputlength
+        c = u1.readchar()
+        if (c >= 48 and c<=57) or c==46:
+            spacLabel = 0
+            clong[count] = c
+            count += 1
+            spacState = 0
+        else:
+            spacLabel = 1
+
+        if spacLabel == 1 and spacState == 0:
+            clong[count] = 32
+            count += 1
+            spacState = 1
     print(inputlength)
 tim1 = Timer(3, freq = 1/2)
 tim1.callback(laserDetecter)
@@ -101,8 +114,8 @@ tim2.callback(counter)
 
 while True:
     if lbel1 == 1:
-        print(count)
+        tempCount = count
         count = 0
         lbel1 = 0
-        mobileSig()
+        mobileSig(tempCount)
 
