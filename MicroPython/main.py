@@ -4,9 +4,14 @@ micropython.alloc_emergency_exception_buf(100)
 import pyb
 from pyb import UART
 from pyb import Timer
+
+#################################################
+####### All parameters ##########################
 clong = bytearray(1024)
-lbel1 = 0
-count = 0                          #For count every 30 sec
+count = 0                          # For count data every 30 sec
+lbel1 = 0                           # For every 30 sends out the data by 3G
+lbel2 = 0                           # For every several hours to readjust the rtc time.
+####### End parameters #########################
 
 def getTime(u2):
     u2.writechar(26)
@@ -26,6 +31,8 @@ def initRTC(rtc, time):
     dt = eval(time)
     rtc.datetime(dt)
 
+
+###### init device ###########################
 u1 = UART(1, baudrate=9600, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
@@ -55,12 +62,14 @@ u1.writechar(6)
 u1.writechar(3)
 u1.writechar(119)
 
+###### End of init #######################
+
+###### Send data  #######################
 def mobileSig(count1):
     laserSig = str(clong[0:count1])
     rtcSig = str(rtc.datetime())
-    laserLength = len(laserSig)
-    rtcLength = len(rtcSig)
-    totalLength = laserLength + 50 + rtcLength
+    totalData = 'laserData=' + laserSig + '&rms=rms&rtc=' + rtcSig + '&temp=temp&cur=cur&hum=hum&'
+    totalLength = len(totalData)
     u2.writechar(26)
     u2.write('AT+CHTTPACT="dataflow-1293.appspot.com",80\r')
     pyb.delay(8000)
@@ -71,16 +80,13 @@ def mobileSig(count1):
     u2.write(str(totalLength))
     u2.write('\r\n')
     u2.writechar(10)
-    u2.write('laserData=')
-    u2.write(laserSig)
-    u2.write('&rms=rms&rtc=')
-    u2.write(rtcSig)
-    u2.write('&temp=temp&cur=cur&hum=hum&')
+    u2.write(totalData)
     u2.writechar(26)
     pyb.delay(2000)
-    print(u2.readall())
     print(rtcSig)
+    print(u2.readall())
 
+######## laser distance data collection ###
 def laserDetecter(timer):
     global count
     inputlength = u1.any()
@@ -106,11 +112,19 @@ def laserDetecter(timer):
 tim1 = Timer(3, freq = 1/2)
 tim1.callback(laserDetecter)
 
-def counter(timer):
+######## Timer for send data ##############
+def counter1(timer):
     global lbel1
     lbel1 = 1
 tim2 = Timer(4, freq = 1/30)
-tim2.callback(counter)
+tim2.callback(counter1)
+
+######## Timer for adjust rtc #############
+def counter2(timer):
+    global lbel2
+    lbel2 = 1
+tim2 = Timer(5, freq = 1/3600)
+tim2.callback(counter2)
 
 while True:
     if lbel1 == 1:
@@ -118,4 +132,13 @@ while True:
         count = 0
         lbel1 = 0
         mobileSig(tempCount)
+    if lbel2 == 1:
+        lbel2 = 0
+        result = getTime(u2)
+        index = result.find("##")
+        if index > -1 and (index + 26) < len(result):
+            initRTC(rtc, result[index+2:index+26])
+            rtcSig = str(rtc.datetime())
+            print(rtcSig)
+
 
