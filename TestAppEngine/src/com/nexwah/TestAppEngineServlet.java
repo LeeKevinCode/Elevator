@@ -51,7 +51,7 @@ public class TestAppEngineServlet extends HttpServlet {
 
 			datastore.put(elevator);
 		}
-		resp.getWriter().println("Very Good" + laserData);
+		resp.getWriter().println("Very Good");
 
 	}
 
