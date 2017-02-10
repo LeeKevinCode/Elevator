@@ -123,8 +123,8 @@ tim2.callback(counter1)
 def counter2(timer):
     global lbel2
     lbel2 = 1
-tim2 = Timer(5, freq = 1/3600)
-tim2.callback(counter2)
+tim3 = Timer(5, freq = 1/3600)
+tim3.callback(counter2)
 
 while True:
     if lbel1 == 1:
