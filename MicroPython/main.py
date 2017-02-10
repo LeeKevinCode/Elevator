@@ -31,7 +31,6 @@ def initRTC(rtc, time):
     dt = eval(time)
     rtc.datetime(dt)
 
-
 ###### init device ###########################
 u1 = UART(1, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
@@ -108,6 +107,7 @@ def counter2(timer):
 tim3 = Timer(5, freq = 1/3600)
 tim3.callback(counter2)
 
+####### Average the data for each second #####
 def averageData(miniteData):
     countData = 0
     totalData = 0
@@ -124,6 +124,7 @@ def averageData(miniteData):
     else:
         return int(totalData/countData)
 
+####### Parse the lase data for ############
 def parseLaserData(rawData):
     cookData = rawData.split('n')
     resultList = ' '
