@@ -33,19 +33,11 @@ def initRTC(rtc, time):
 
 
 ###### init device ###########################
-u1 = UART(1, baudrate=9600, read_buf_len=1024)
+u1 = UART(1, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
-u1.writechar(128)
-u1.writechar(6)
-u1.writechar(2)
-u1.writechar(120)
-u1.writechar(250)
-u1.writechar(4)
-u1.writechar(5)
-u1.writechar(1)
-u1.writechar(252)
+u1.writechar(67)
 pyb.delay(1000)
 
 result = getTime(u2)
@@ -56,17 +48,10 @@ while index == -1 or (index + 26) > len(result):
 
 rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
-
-u1.writechar(128)
-u1.writechar(6)
-u1.writechar(3)
-u1.writechar(119)
-
 ###### End of init #######################
 
 ###### Send data  #######################
-def mobileSig(count1):
-    laserSig = str(clong[0:count1])
+def mobileSig(laserSig):
     rtcSig = str(rtc.datetime())
     totalData = 'laserData=' + laserSig + '&rms=rms&rtc=' + rtcSig + '&temp=temp&cur=cur&hum=hum&'
     totalLength = len(totalData)
@@ -90,26 +75,23 @@ def mobileSig(count1):
 def laserDetecter(timer):
     global count
     inputlength = u1.any()
-    spacLabel = 0
-    spacState = 1
-    if 1024 < (inputlength + count):
-        inputlength = 1024 - count
-    for i in range(inputlength):
+    inputlength += 1
+    if myBufferLenght < (inputlength + count):
+        inputlength = myBufferLenght - count
+    for i in range(inputlength - 1):
         c = u1.readchar()
-        if (c >= 48 and c<=57) or c==46:
-            spacLabel = 0
-            clong[count] = c
-            count += 1
-            spacState = 0
-        else:
-            spacLabel = 1
-
-        if spacLabel == 1 and spacState == 0:
+        if c < 10:
+            clong[count] = c + 48
+        elif c == 255:
             clong[count] = 32
-            count += 1
-            spacState = 1
-    print(inputlength)
-tim1 = Timer(3, freq = 1/2)
+        elif c == 10:
+            clong[count] = 109          #error message
+        else:
+            count -= 1
+        count += 1
+    clong[count] = 110
+    count += 1
+tim1 = Timer(3, freq = 1)
 tim1.callback(laserDetecter)
 
 ######## Timer for send data ##############
@@ -126,12 +108,35 @@ def counter2(timer):
 tim3 = Timer(5, freq = 1/3600)
 tim3.callback(counter2)
 
+def averageData(miniteData):
+    countData = 0
+    totalData = 0
+    tempData = miniteData.split(' ')
+    for i in range(len(tempData)):
+        try:
+            singleData = int(tempData[i])
+            totalData += singleData
+            countData += 1
+        except:
+            continue
+    if countData == 0:
+        return "error"
+    else:
+        return int(totalData/countData)
+
+def parseLaserData(rawData):
+    cookData = rawData.split('n')
+    resultList = ' '
+    for i in range(len(cookData) - 1):
+        resultList += str(averageData(cookData[i])) + ' '
+    return resultList
+
 while True:
     if lbel1 == 1:
         tempCount = count
         count = 0
         lbel1 = 0
-        mobileSig(tempCount)
+        mobileSig(parseLaserData(str(clong[0:tempCount])))
     if lbel2 == 1:
         lbel2 = 0
         result = getTime(u2)
