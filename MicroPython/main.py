@@ -36,7 +36,6 @@ u1 = UART(1, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
-u1.writechar(67)
 pyb.delay(1000)
 
 result = getTime(u2)
@@ -47,11 +46,12 @@ while index == -1 or (index + 26) > len(result):
 
 rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
+u1.writechar(67)
+os.chdir('/sd/data')
 ###### End of init #######################
 
 ###### Send data  #######################
-def mobileSig(laserSig):
-    rtcSig = str(rtc.datetime())
+def mobileSig(laserSig, rtcSig):
     totalData = 'laserData=' + laserSig + '&rms=rms&rtc=' + rtcSig + '&temp=temp&cur=cur&hum=hum&'
     totalLength = len(totalData)
     u2.writechar(26)
@@ -132,12 +132,31 @@ def parseLaserData(rawData):
         resultList += str(averageData(cookData[i])) + ' '
     return resultList
 
+def logData(rawData):
+    state = os.stat('/sd/data/laser.txt')
+    if state[6] > 20000:
+        lines = open('laser.txt').readlines()
+        tempF = open('laser.txt', 'w')
+        tempF.write("### Start of Data ###\n\n")
+        tempF.close()
+        tempF = open('laser.txt', 'a')
+        for i in range(10, len(lines)):
+            tempF.write(lines[i])
+        tempF.close()
+    file = open('laser.txt', 'a')
+    file.write(rawData)
+    file.close()
+
 while True:
     if lbel1 == 1:
         tempCount = count
         count = 0
         lbel1 = 0
-        mobileSig(parseLaserData(str(clong[0:tempCount])))
+        rawData = str(clong[0:tempCount])
+        cookedData = parseLaserData(rawData)
+        rtcSig = str(rtc.datetime())
+        logData(rawData+ ' ' + rtcSig + '\n')
+        mobileSig(cookedData, rtcSig)
     if lbel2 == 1:
         lbel2 = 0
         result = getTime(u2)
@@ -146,5 +165,3 @@ while True:
             initRTC(rtc, result[index+2:index+26])
             rtcSig = str(rtc.datetime())
             print(rtcSig)
-
-
