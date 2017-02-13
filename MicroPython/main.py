@@ -4,10 +4,12 @@ micropython.alloc_emergency_exception_buf(100)
 import pyb
 from pyb import UART
 from pyb import Timer
+import os
 
 #################################################
 ####### All parameters ##########################
-clong = bytearray(1024)
+myBufferLenght = 2500
+clong = bytearray(myBufferLenght)
 count = 0                          # For count data every 30 sec
 lbel1 = 0                           # For every 30 sends out the data by 3G
 lbel2 = 0                           # For every several hours to readjust the rtc time.
@@ -31,6 +33,7 @@ def initRTC(rtc, time):
     dt = eval(time)
     rtc.datetime(dt)
 
+
 ###### init device ###########################
 u1 = UART(1, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
@@ -46,6 +49,7 @@ while index == -1 or (index + 26) > len(result):
 
 rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
+print(result[index+2:index+26])
 u1.writechar(67)
 os.chdir('/sd/data')
 ###### End of init #######################
@@ -67,7 +71,6 @@ def mobileSig(laserSig, rtcSig):
     u2.write(totalData)
     u2.writechar(26)
     pyb.delay(2000)
-    print(rtcSig)
     print(u2.readall())
 
 ######## laser distance data collection ###
@@ -107,7 +110,6 @@ def counter2(timer):
 tim3 = Timer(5, freq = 1/3600)
 tim3.callback(counter2)
 
-####### Average the data for each second #####
 def averageData(miniteData):
     countData = 0
     totalData = 0
@@ -124,7 +126,6 @@ def averageData(miniteData):
     else:
         return int(totalData/countData)
 
-####### Parse the lase data for ############
 def parseLaserData(rawData):
     cookData = rawData.split('n')
     resultList = ' '
@@ -164,4 +165,4 @@ while True:
         if index > -1 and (index + 26) < len(result):
             initRTC(rtc, result[index+2:index+26])
             rtcSig = str(rtc.datetime())
-            print(rtcSig)
+
