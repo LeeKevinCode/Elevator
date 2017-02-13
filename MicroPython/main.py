@@ -49,7 +49,6 @@ while index == -1 or (index + 26) > len(result):
 
 rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
-print(result[index+2:index+26])
 u1.writechar(67)
 os.chdir('/sd/data')
 ###### End of init #######################
@@ -128,9 +127,10 @@ def averageData(miniteData):
 
 def parseLaserData(rawData):
     cookData = rawData.split('n')
-    resultList = ' '
+    resultList = ''
     for i in range(len(cookData) - 1):
         resultList += str(averageData(cookData[i])) + ' '
+    resultList = resultList[:-1]
     return resultList
 
 def logData(rawData):
@@ -162,6 +162,7 @@ while True:
         lbel2 = 0
         result = getTime(u2)
         index = result.find("##")
+        print('index is' + str(index))
         if index > -1 and (index + 26) < len(result):
             initRTC(rtc, result[index+2:index+26])
             rtcSig = str(rtc.datetime())
