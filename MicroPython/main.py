@@ -13,8 +13,14 @@ clong = bytearray(myBufferLenght)
 count = 0                          # For count data every 30 sec
 lbel1 = 0                           # For every 30 sends out the data by 3G
 lbel2 = 0                           # For every several hours to readjust the rtc time.
+fileNames = ['data0.txt','data1.txt','data2.txt','data3.txt',
+'data4.txt','data5.txt','data6.txt','data7.txt','data8.txt','data9.txt']
+## 10 data files
+routine = '/sd/data/'               # data stored directory
+fileSizeLimit = 2000                # each file size limit
 ####### End parameters #########################
 
+###### get current time from cloud ###########################
 def getTime(u2):
     u2.writechar(26)
     u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
@@ -29,16 +35,17 @@ def getTime(u2):
     result = u2.readall()
     return str(result)
 
+###### init rtc ###########################
 def initRTC(rtc, time):
     dt = eval(time)
     rtc.datetime(dt)
-
 
 ###### init device ###########################
 u1 = UART(1, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
+# set simcard apn
 pyb.delay(1000)
 
 result = getTime(u2)
@@ -51,6 +58,7 @@ rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
 u1.writechar(67)
 os.chdir('/sd/data')
+currentFile = 0                 # set current data stored file
 ###### End of init #######################
 
 ###### Send data  #######################
@@ -109,6 +117,7 @@ def counter2(timer):
 tim3 = Timer(5, freq = 1/3600)
 tim3.callback(counter2)
 
+######## Average the per second data #############
 def averageData(miniteData):
     countData = 0
     totalData = 0
@@ -125,6 +134,7 @@ def averageData(miniteData):
     else:
         return int(totalData/countData)
 
+######## parse the data to a cloud recognised form #############
 def parseLaserData(rawData):
     cookData = rawData.split('n')
     resultList = ''
@@ -133,18 +143,27 @@ def parseLaserData(rawData):
     resultList = resultList[:-1]
     return resultList
 
+######## get current data file size #############
+def getSizeOfFile(fileName):
+    try:
+        state = os.stat(routine+fileName)
+        return int(state[6])
+    except:
+        return -1
+
+######## log raw data to data files on sd card #############
 def logData(rawData):
-    state = os.stat('/sd/data/laser.txt')
-    if state[6] > 20000:
-        lines = open('laser.txt').readlines()
-        tempF = open('laser.txt', 'w')
+    global currentFile
+    size = getSizeOfFile(fileNames[currentFile])
+    if size > fileSizeLimit or size == -1:
+        print('here')
+        if size > fileSizeLimit:
+            currentFile += 1
+            currentFile %= 10
+        tempF = open(fileNames[currentFile], 'w')
         tempF.write("### Start of Data ###\n\n")
         tempF.close()
-        tempF = open('laser.txt', 'a')
-        for i in range(10, len(lines)):
-            tempF.write(lines[i])
-        tempF.close()
-    file = open('laser.txt', 'a')
+    file = open(fileNames[currentFile], 'a')
     file.write(rawData)
     file.close()
 
