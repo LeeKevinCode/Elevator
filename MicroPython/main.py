@@ -41,7 +41,7 @@ def initRTC(rtc, time):
     rtc.datetime(dt)
 
 ###### init device ###########################
-u1 = UART(1, baudrate=115200, read_buf_len=1024)
+u3 = UART(3, baudrate=115200, read_buf_len=1024)
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
@@ -56,7 +56,7 @@ while index == -1 or (index + 26) > len(result):
 
 rtc = pyb.RTC()
 initRTC(rtc, result[index+2:index+26])
-u1.writechar(67)
+u3.writechar(67)
 os.chdir('/sd/data')
 currentFile = 0                 # set current data stored file
 ###### End of init #######################
@@ -83,23 +83,27 @@ def mobileSig(laserSig, rtcSig):
 ######## laser distance data collection ###
 def laserDetecter(timer):
     global count
-    inputlength = u1.any()
+    inputlength = u3.any()
     inputlength += 1
+    tempLabelN = 0
     if myBufferLenght < (inputlength + count):
         inputlength = myBufferLenght - count
     for i in range(inputlength - 1):
-        c = u1.readchar()
+        c = u3.readchar()
         if c < 10:
             clong[count] = c + 48
+            count += 1
         elif c == 255:
             clong[count] = 32
+            count += 1
+            if tempLabelN == 0:
+                clong[count] = 110
+                count += 1
+                tempLabelN = 1
         elif c == 10:
             clong[count] = 109          #error message
-        else:
-            count -= 1
-        count += 1
-    clong[count] = 110
-    count += 1
+            count += 1
+
 tim1 = Timer(3, freq = 1)
 tim1.callback(laserDetecter)
 
@@ -138,7 +142,7 @@ def averageData(miniteData):
 def parseLaserData(rawData):
     cookData = rawData.split('n')
     resultList = ''
-    for i in range(len(cookData) - 1):
+    for i in range(1, len(cookData)):
         resultList += str(averageData(cookData[i])) + ' '
     resultList = resultList[:-1]
     return resultList
@@ -156,7 +160,6 @@ def logData(rawData):
     global currentFile
     size = getSizeOfFile(fileNames[currentFile])
     if size > fileSizeLimit or size == -1:
-        print('here')
         if size > fileSizeLimit:
             currentFile += 1
             currentFile %= 10
@@ -176,6 +179,7 @@ while True:
         cookedData = parseLaserData(rawData)
         rtcSig = str(rtc.datetime())
         logData(rawData+ ' ' + rtcSig + '\n')
+        # print(cookedData+ ' ' + rtcSig + '\n')
         mobileSig(cookedData, rtcSig)
     if lbel2 == 1:
         lbel2 = 0
