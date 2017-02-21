@@ -8,11 +8,9 @@ import os
 
 #################################################
 ####### All parameters ##########################
-myBufferLenght = 2500
+myBufferLenght = 2000
 clong = bytearray(myBufferLenght)
-cAccelarator = bytearray(myBufferLenght)
 countLaser = 0                          # For count data every 30 sec
-countAcc = 0
 lbel1 = 0                           # For every 30 sends out the data by 3G
 lbel2 = 0                           # For every several hours to readjust the rtc time.
 fileNames = ['data0.txt','data1.txt','data2.txt','data3.txt',
@@ -20,7 +18,7 @@ fileNames = ['data0.txt','data1.txt','data2.txt','data3.txt',
 ## 10 data files
 routine = '/sd/data/'               # data stored directory
 fileSizeLimit = 2000                # each file size limit
-recordAccSec = [-1] * 32            # record the starting point of data for each second 
+recordAccSec = [-1] * 35            # record the starting point of data for each second 
 recordAccCount = 0                  # record the second
 currentFile = 0                     # set current data stored file
 ####### End parameters #########################
@@ -48,7 +46,7 @@ def initRTC(rtc, time):
 ###### init device ###########################
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u3 = UART(3, baudrate=115200, read_buf_len=1024)
-u4 = UART(4, baudrate=9600, read_buf_len=1024)
+u4 = UART(4, baudrate=9600, read_buf_len=8096)
 u6 = UART(6, baudrate=9600, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
@@ -68,8 +66,8 @@ os.chdir('/sd/data')
 ###### End of init #######################
 
 ###### Send data  #######################
-def mobileSig(laserSig, rtcSig):
-    totalData = 'laserData=' + laserSig + '&rms=rms&rtc=' + rtcSig + '&temp=temp&cur=cur&hum=hum&'
+def mobileSig(laserSig, rtcSig, accSig, others):
+    totalData = 'laserData=' + laserSig + '&acc=' + accSig + '&rtc=' + rtcSig + '&temp=' + others[3] + '&cur1=' + others[0] + '&cur2=' + others[1] + '&hum=' + others[2] + '&'
     totalLength = len(totalData)
     u2.writechar(26)
     u2.write('AT+CHTTPACT="dataflow-1293.appspot.com",80\r')
@@ -129,14 +127,9 @@ tim3.callback(counter2)
 
 ######## Timer for Acc data collection ####
 def accDetecter(timer):
-    global countAcc, recordAccCount
+    global recordAccCount
     inputlength = u4.any()
-    if myBufferLenght < (inputlength + countAcc):
-        inputlength = myBufferLenght - countAcc
-    for i in range(0, inputlength):
-        cAccelarator[countAcc] = u4.readchar()
-        countAcc +=1
-    recordAccSec[recordAccCount] = countAcc
+    recordAccSec[recordAccCount] = inputlength
     recordAccCount += 1
 tim4 = Timer(6, freq = 1)
 tim4.callback(accDetecter)
@@ -194,6 +187,9 @@ def logData(rawData):
 def parseAcc(rawData,startingRecord,recordNum):
     parseCount = 0
     result = ''
+    if recordNum > 2:
+        if startingRecord[0] > startingRecord[1]:
+            startingRecord[0] = int (startingRecord[1] / 2)
     for i in range(recordNum):
         secondX = 0
         secondY = 0
@@ -216,7 +212,7 @@ def parseAcc(rawData,startingRecord,recordNum):
                     parseCount -=1
             parseCount +=1
         if countSec == 0:
-            result += 'error\n'
+            result += 'error;'
         else:
             result += 'x:' + str(int(secondX/countSec)) + ' y:' + str(int(secondY/countSec)) + ' z:' + str(int(secondZ/countSec)) + ';'
     return result
@@ -247,6 +243,7 @@ while True:
         countLaser = 0
 #################################################
         recordNum = recordAccCount
+        recordAccCount = 0
         temRecord = [-1] * recordNum
         temRecord[:] = recordAccSec[:recordNum]
 #################################################
@@ -255,19 +252,16 @@ while True:
 ################ Laser parse ####################
         rawLaserData = str(clong[0:tempCount])
         cookedLaserData = parseLaserData(rawLaserData)
-################ ACC parse ######################
-        recordAccCount = 0
-        tempAcc = bytearray(countAcc)
-        tempAcc[:] = cAccelarator[:countAcc]
-        countAcc = 0
-        cookedAccData = parseAcc(tempAcc, temRecord, recordNum)
+################ ACC parse ###################### 
+        rawAcc = u4.read(temRecord[recordNum-1])
+        cookedAccData = parseAcc(rawAcc, temRecord, recordNum)
 ################ Other parse ####################
         otherString = str(others)
         cookedOther = parseOthers(otherString)
         rtcSig = str(rtc.datetime())
         logData(rawLaserData+ ' ' + rtcSig + '\n')
-        print(cookedOther + '\n' + cookedLaserData + '\n' + cookedAccData)
-        # mobileSig(cookedLaserData, rtcSig)
+        print(cookedOther[0] + '\n' + cookedLaserData + '\n' + cookedAccData + '\n' + rtcSig + '\n')
+        mobileSig(cookedLaserData, rtcSig, cookedAccData, cookedOther)
     if lbel2 == 1:
         lbel2 = 0
         result = getTime(u2)
