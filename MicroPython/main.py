@@ -44,7 +44,7 @@ def initRTC(rtc, time):
     rtc.datetime(dt)
 
 ###### init device ###########################
-u2 = UART(2, baudrate=115200, read_buf_len=1024)
+u2 = UART(2, baudrate=115200, read_buf_len=8096)
 u3 = UART(3, baudrate=115200, read_buf_len=1024)
 u4 = UART(4, baudrate=9600, read_buf_len=8096)
 u6 = UART(6, baudrate=9600, read_buf_len=1024)
@@ -214,7 +214,7 @@ def parseAcc(rawData,startingRecord,recordNum):
         if countSec == 0:
             result += 'error;'
         else:
-            result += 'x:' + str(int(secondX/countSec)) + ' y:' + str(int(secondY/countSec)) + ' z:' + str(int(secondZ/countSec)) + ';'
+            result += 'x:' + str(int(secondX/countSec)) + 'y:' + str(int(secondY/countSec)) + 'z:' + str(int(secondZ/countSec)) + ';'
     return result
 
 ################ parse other data ####################
@@ -260,7 +260,6 @@ while True:
         cookedOther = parseOthers(otherString)
         rtcSig = str(rtc.datetime())
         logData(rawLaserData+ ' ' + rtcSig + '\n')
-        print(cookedOther[0] + '\n' + cookedLaserData + '\n' + cookedAccData + '\n' + rtcSig + '\n')
         mobileSig(cookedLaserData, rtcSig, cookedAccData, cookedOther)
     if lbel2 == 1:
         lbel2 = 0
