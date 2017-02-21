@@ -44,10 +44,10 @@ def initRTC(rtc, time):
     rtc.datetime(dt)
 
 ###### init device ###########################
-u2 = UART(2, baudrate=115200, read_buf_len=8096)
+u2 = UART(2, baudrate=115200, read_buf_len=8192)
 u3 = UART(3, baudrate=115200, read_buf_len=1024)
-u4 = UART(4, baudrate=9600, read_buf_len=8096)
-u6 = UART(6, baudrate=9600, read_buf_len=1024)
+u4 = UART(4, baudrate=9600, read_buf_len=8192)
+u6 = UART(6, baudrate=9600, read_buf_len=4096)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
 # set simcard apn
@@ -249,6 +249,7 @@ while True:
 #################################################
         otherCount = u6.any()
         others = u6.read(otherCount)
+        print(otherCount)
 ################ Laser parse ####################
         rawLaserData = str(clong[0:tempCount])
         cookedLaserData = parseLaserData(rawLaserData)
