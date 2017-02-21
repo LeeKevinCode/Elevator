@@ -230,7 +230,7 @@ def parseOthers(others):
         if i0 > -1 and i1 > -1 and i2 > -1 and i3 > -1:
             result0 += singles[i][i0+6:i1-1] + ';'
             result1 += singles[i][i1+6:i2-1] + ';'
-            result2 += singles[i][i2+9:i3-1] + ';'
+            result2 += singles[i][i2+9:i3-2] + ';'
             result3 += singles[i][i3+12:] + ';'
     return [result0, result1,result2, result3]
 
@@ -249,7 +249,6 @@ while True:
 #################################################
         otherCount = u6.any()
         others = u6.read(otherCount)
-        print(otherCount)
 ################ Laser parse ####################
         rawLaserData = str(clong[0:tempCount])
         cookedLaserData = parseLaserData(rawLaserData)
