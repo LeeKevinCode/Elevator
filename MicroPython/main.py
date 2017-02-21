@@ -49,6 +49,7 @@ def initRTC(rtc, time):
 u2 = UART(2, baudrate=115200, read_buf_len=1024)
 u3 = UART(3, baudrate=115200, read_buf_len=1024)
 u4 = UART(4, baudrate=9600, read_buf_len=1024)
+u6 = UART(6, baudrate=9600, read_buf_len=1024)
 u2.writechar(26)
 u2.write('AT+CGSOCKCONT=1,"IP","sunsurf"\r')
 # set simcard apn
@@ -220,28 +221,53 @@ def parseAcc(rawData,startingRecord,recordNum):
             result += 'x:' + str(int(secondX/countSec)) + ' y:' + str(int(secondY/countSec)) + ' z:' + str(int(secondZ/countSec)) + ';'
     return result
 
+################ parse other data ####################
+def parseOthers(others):
+    result0 = result1 = result2 =result3 = ''
+    singles = others.split('\\r\\n')
+    length = len(singles)
+    for i in range(length):
+        i0 = singles[i].find('Irms0')
+        i1 = singles[i].find('Irms1')
+        i2 = singles[i].find('Humidity')
+        i3 = singles[i].find('Temperature')
+        if i0 > -1 and i1 > -1 and i2 > -1 and i3 > -1:
+            result0 += singles[i][i0+6:i1-1] + ';'
+            result1 += singles[i][i1+6:i2-1] + ';'
+            result2 += singles[i][i2+9:i3-1] + ';'
+            result3 += singles[i][i3+12:] + ';'
+    return [result0, result1,result2, result3]
+
 ################ Main Thread ####################
 while True:
     if lbel1 == 1:
+#################################################
         lbel1 = 0
-################ Laser parse ####################
         tempCount = countLaser
         countLaser = 0
-        rawLaserData = str(clong[0:tempCount])
-        cookedLaserData = parseLaserData(rawLaserData)
-################ ACC parse ######################
+#################################################
         recordNum = recordAccCount
         temRecord = [-1] * recordNum
         temRecord[:] = recordAccSec[:recordNum]
+#################################################
+        otherCount = u6.any()
+        others = u6.read(otherCount)
+################ Laser parse ####################
+        rawLaserData = str(clong[0:tempCount])
+        cookedLaserData = parseLaserData(rawLaserData)
+################ ACC parse ######################
         recordAccCount = 0
         tempAcc = bytearray(countAcc)
         tempAcc[:] = cAccelarator[:countAcc]
         countAcc = 0
         cookedAccData = parseAcc(tempAcc, temRecord, recordNum)
-################ ACC parse ######################
+################ Other parse ####################
+        otherString = str(others)
+        cookedOther = parseOthers(otherString)
         rtcSig = str(rtc.datetime())
         logData(rawLaserData+ ' ' + rtcSig + '\n')
-        mobileSig(cookedLaserData, rtcSig)
+        print(cookedOther + '\n' + cookedLaserData + '\n' + cookedAccData)
+        # mobileSig(cookedLaserData, rtcSig)
     if lbel2 == 1:
         lbel2 = 0
         result = getTime(u2)
