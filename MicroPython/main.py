@@ -6,6 +6,7 @@ from pyb import UART
 from pyb import Timer
 import os
 
+print('start')
 #################################################
 ####### All parameters ##########################
 myBufferLenght = 2000
@@ -17,10 +18,11 @@ fileNames = ['data0.txt','data1.txt','data2.txt','data3.txt',
 'data4.txt','data5.txt','data6.txt','data7.txt','data8.txt','data9.txt']
 ## 10 data files
 routine = '/sd/data/'               # data stored directory
-fileSizeLimit = 200000                # each file size limit
+fileSizeLimit = 150000                # each file size limit
 recordAccSec = [-1] * 35            # record the starting point of data for each second 
 recordAccCount = 0                  # record the second
 currentFile = 0                     # set current data stored file
+fileFlag = False
 ####### End parameters #########################
 
 ###### get current time from cloud ###########################
@@ -43,6 +45,7 @@ def initRTC(rtc, time):
     dt = eval(time)
     rtc.datetime(dt)
 
+print('start initialize')
 ###### init device ###########################
 u2 = UART(2, baudrate=115200, read_buf_len=8192)
 u3 = UART(3, baudrate=115200, read_buf_len=1024)
@@ -65,7 +68,7 @@ u3.writechar(67)
 # u3.writechar(85)
 os.chdir('/sd/data')
 ###### End of init #######################
-
+print('end of initialize')
 ###### Send data  #######################
 def mobileSig(laserSig, rtcSig, accSig, others):
     totalData = 'laserData=' + laserSig + '&acc=' + accSig + '&rtc=' + rtcSig + '&temp=' + others[3] + '&cur1=' + others[0] + '&cur2=' + others[1] + '&hum=' + others[2] + '&'
@@ -170,7 +173,12 @@ def getSizeOfFile(fileName):
 
 ######## log raw data to data files on sd card #############
 def logData(rawData):
-    global currentFile
+    global currentFile, fileFlag
+    if fileFlag:
+        fileFlag = False
+        tempF = open(fileNames[currentFile], 'w')
+        tempF.write("### Start of Data ###\n\n")
+        tempF.close()
     size = getSizeOfFile(fileNames[currentFile])
     if size > fileSizeLimit or size == -1:
         if size > fileSizeLimit:
@@ -179,9 +187,10 @@ def logData(rawData):
         tempF = open(fileNames[currentFile], 'w')
         tempF.write("### Start of Data ###\n\n")
         tempF.close()
+    print('File name is ' + fileNames[currentFile] + ' ' + str(size))
     file = open(fileNames[currentFile], 'a')
     file.write(rawData)
-    file.close()
+    file.close()    
 
 ######## parse the ACC data to a cloud recognised form ##########
 def parseAcc(rawData,startingRecord,recordNum):
@@ -238,6 +247,7 @@ def parseOthers(others):
 while True:
     try:
         if lbel1 == 1:
+            print('Main course start')
     #################################################
             lbel1 = 0
             tempCount = countLaser
@@ -261,9 +271,8 @@ while True:
             cookedOther = parseOthers(otherString)
             rtcSig = str(rtc.datetime())
             print(rtcSig)
-            print(cookedAccData)
-            logData(rawLaserData+ ' ' + rtcSig + '\n')
-            mobileSig(cookedLaserData, rtcSig, cookedAccData, cookedOther)
+            # mobileSig(cookedLaserData, rtcSig, cookedAccData, cookedOther)
+            logData(rawLaserData + ' ' + cookedAccData + ' ' + rtcSig + ' ' + str(cookedOther) + '\n')
         if lbel2 == 1:
             lbel2 = 0
             result = getTime(u2)
@@ -272,9 +281,13 @@ while True:
             if index > -1 and (index + 26) < len(result):
                 initRTC(rtc, result[index+2:index+26])
                 rtcSig = str(rtc.datetime())
-    except Exception:
+    except OSError as e:
+        currentFile +=1
+        fileFlag = True
+        print(e)
+    except Exception as e:
+        print(e)
         lbel2 = 0
         countLaser = 0
-        print('exception')
         lbel1 = 0
         recordAccCount = 0
